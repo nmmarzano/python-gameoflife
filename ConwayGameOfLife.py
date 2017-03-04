@@ -83,7 +83,7 @@ def splashscreen():
     
     label = myfont.render("Left click: turn cell on/off", 1, dark)
     screen.blit(label, (splashW/2-label.get_width()/2, 150))
-    label = myfont.render("Space bar: pause/unpause simulation", 1, dark)
+    label = myfont.render("Right click/space bar: pause/unpause simulation", 1, dark)
     screen.blit(label, (splashW/2-label.get_width()/2, 150+(label.get_height()+10)*1))
     label = myfont.render("Down arrow key/mouse wheel down: slow down simulation", 1, dark)
     screen.blit(label, (splashW/2-label.get_width()/2, 150+(label.get_height()+10)*2))

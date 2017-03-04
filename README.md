@@ -5,7 +5,7 @@ Uses pygame for most things
 ---
 
 Left click: turn cell on/off
-Space bar: pause/unpause simulation
+Right click/space bar: pause/unpause simulation
 Down arrow key/mouse wheel down: slow down simulation
 Up arrow key/mouse wheel up: speed up simulation
 C: clear board
