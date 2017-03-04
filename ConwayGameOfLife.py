@@ -63,9 +63,12 @@ def splashscreen():
 
     light = (255, 255, 255)
     dark = (0, 0, 0)
+
+    splashW = 500
+    splashH = 450
     
     #set up screen
-    size = (400, 500)
+    size = (splashW, splashH)
     screen = pygame.display.set_mode(size)
 
     screen.fill(light)
@@ -76,24 +79,24 @@ def splashscreen():
 
     #draw text to screen
     title = titlefont.render("Conway's Game of Life", 1, dark)
-    screen.blit(title, (200-title.get_width()/2, 50))
+    screen.blit(title, (splashW/2-title.get_width()/2, 50))
     
     label = myfont.render("Left click: turn cell on/off", 1, dark)
-    screen.blit(label, (200-label.get_width()/2, 150))
-    label = myfont.render("Space bar: pause/unpause simulation", 1, dark)
-    screen.blit(label, (200-label.get_width()/2, 150+(label.get_height()+10)*1))
-    label = myfont.render("Left arrow key: slow down simulation", 1, dark)
-    screen.blit(label, (200-label.get_width()/2, 150+(label.get_height()+10)*2))
-    label = myfont.render("Right arrow key: speed up simulation", 1, dark)
-    screen.blit(label, (200-label.get_width()/2, 150+(label.get_height()+10)*3))
+    screen.blit(label, (splashW/2-label.get_width()/2, 150))
+    label = myfont.render("Right click/space bar: pause/unpause simulation", 1, dark)
+    screen.blit(label, (splashW/2-label.get_width()/2, 150+(label.get_height()+10)*1))
+    label = myfont.render("Down arrow key/mouse wheel down: slow down simulation", 1, dark)
+    screen.blit(label, (splashW/2-label.get_width()/2, 150+(label.get_height()+10)*2))
+    label = myfont.render("Up arrow key/mouse wheel up: speed up simulation", 1, dark)
+    screen.blit(label, (splashW/2-label.get_width()/2, 150+(label.get_height()+10)*3))
     label = myfont.render("C: clear board", 1, dark)
-    screen.blit(label, (200-label.get_width()/2, 150+(label.get_height()+10)*4))
+    screen.blit(label, (splashW/2-label.get_width()/2, 150+(label.get_height()+10)*4))
     label = myfont.render("1-5: change palette", 1, dark)
-    screen.blit(label, (200-label.get_width()/2, 150+(label.get_height()+10)*5))
+    screen.blit(label, (splashW/2-label.get_width()/2, 150+(label.get_height()+10)*5))
     label = myfont.render("Escape: exit the simulation", 1, dark)
-    screen.blit(label, (200-label.get_width()/2, 150+(label.get_height()+10)*6))
+    screen.blit(label, (splashW/2-label.get_width()/2, 150+(label.get_height()+10)*6))
     label = myfont.render("press any key to proceed to simulation", 1, dark)
-    screen.blit(label, (200-label.get_width()/2, 150+(label.get_height()+10)*8))
+    screen.blit(label, (splashW/2-label.get_width()/2, 150+(label.get_height()+10)*8))
     
     #update screen
     pygame.display.flip()
@@ -110,7 +113,6 @@ def splashscreen():
 def game():
     done = False
     clicked_position = [0, 0]
-    clicked = False
     frames_passed = 0
     unpaused = False
 
@@ -125,12 +127,9 @@ def game():
 
     grid = [[0 for x in range(H)] for y in range(W)]
 
-    #handle multiple input
-    k1, k2, k3, k4, k5, leftPressed, rightPressed, spacePressed, cPressed = False, False, False, False, False, False, False, False, False
-
     #main game loop
     while not done:
-
+        pressed = pygame.key.get_pressed()
         #handles input
         for event in pygame.event.get():
             #window's exit button
@@ -138,70 +137,51 @@ def game():
                 done = True
             #key input
             elif event.type == pygame.KEYDOWN:
-                pressed = pygame.key.get_pressed()
-                if pressed[pygame.K_ESCAPE]:
+                if event.key == pygame.K_ESCAPE:
                     done = True
-                if pressed[pygame.K_SPACE] and not spacePressed:
+                if event.key == pygame.K_SPACE:
                     unpaused = not unpaused
                     updateCaption(screen, frames_until_update, unpaused)
-                    spacePressed = True
-                if pressed[pygame.K_c] and not cPressed:
+                if event.key == pygame.K_c:
                     grid = [[0 for x in range(H)] for y in range(W)]
-                    cPressed = True
-                if pressed[pygame.K_LEFT] and not leftPressed:
+                if event.key == pygame.K_DOWN or event.key == pygame.K_LEFT:
                     frames_until_update += 1
                     updateCaption(screen, frames_until_update, unpaused)
-                    leftPressed = True
-                if pressed[pygame.K_RIGHT] and not rightPressed:
+                if event.key == pygame.K_UP or event.key == pygame.K_RIGHT:
                     if frames_until_update > 1:
                         frames_until_update -= 1
                         updateCaption(screen, frames_until_update, unpaused)
-                    rightPressed = True
-                if pressed[pygame.K_1] and not k1:
+                if event.key == pygame.K_1:
                     light = (255, 255, 255)
                     dark = (0, 0, 0)
-                    k1 = True
-                if pressed[pygame.K_2] and not k2:
+                if event.key == pygame.K_2:
                     light = (227, 213, 184)
                     dark = (208, 57, 88)
-                    k2 = True
-                if pressed[pygame.K_3] and not k3:
+                if event.key == pygame.K_3:
                     light = (247, 176, 42)
                     dark = (232, 113, 16)
-                    k3 = True
-                if pressed[pygame.K_4] and not k4:
+                if event.key == pygame.K_4:
                     light = (255, 252, 151)
                     dark = (146, 31, 58)
-                    k4 = True
-                if pressed[pygame.K_5] and not k5:
+                if event.key == pygame.K_5:
                     light = (241, 234, 220)
                     dark = (20, 147, 165)
-                    k5 = True
-            elif event.type == pygame.KEYUP:
-                pressed = pygame.key.get_pressed()
-                if not pressed[pygame.K_1] and k1:
-                    k1 = False
-                if not pressed[pygame.K_2] and k2:
-                    k2 = False
-                if not pressed[pygame.K_3] and k3:
-                    k3 = False
-                if not pressed[pygame.K_4] and k4:
-                    k4 = False
-                if not pressed[pygame.K_5] and k5:
-                    k5 = False
-                if not pressed[pygame.K_LEFT] and leftPressed:
-                    leftPressed = False
-                if not pressed[pygame.K_RIGHT] and rightPressed:
-                    rightPressed = False
-                if not pressed[pygame.K_SPACE] and spacePressed:
-                    spacePressed = False
-                if not pressed[pygame.K_c] and cPressed:
-                    cPressed = False
                 
             #mouse input
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                clicked_position = pygame.mouse.get_pos()
-                grid[clicked_position[0]//(SQUARE_SIDE+1)][clicked_position[1]//(SQUARE_SIDE+1)] = not grid[clicked_position[0]//(SQUARE_SIDE+1)][clicked_position[1]//(SQUARE_SIDE+1)]
+                if event.button == 1: #left mouse button
+                    clicked_position = pygame.mouse.get_pos()
+                    grid[clicked_position[0]//(SQUARE_SIDE+1)][clicked_position[1]//(SQUARE_SIDE+1)] = not grid[clicked_position[0]//(SQUARE_SIDE+1)][clicked_position[1]//(SQUARE_SIDE+1)]
+                elif event.button == 3: #right mouse button
+                    unpaused = not unpaused
+                    updateCaption(screen, frames_until_update, unpaused)
+                elif event.button == 4: #wheel rolled up
+                    if frames_until_update > 1:
+                        frames_until_update -= 1
+                        updateCaption(screen, frames_until_update, unpaused)
+                elif event.button == 5: #wheel rolled down
+                    frames_until_update += 1
+                    updateCaption(screen, frames_until_update, unpaused)
                     
         #calls update function based on update speed and pause state
         if unpaused:
