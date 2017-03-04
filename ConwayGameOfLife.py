@@ -1,0 +1,235 @@
+#pygame used for bulk of drawing functions and frame draw timing
+import pygame
+#os used to center the screen, pretty much
+import os
+
+#some constants for drawing, W and H are counted in cells, though the screen loops
+W, H = 60, 40
+SQUARE_SIDE = 16
+FRAMERATE = 120
+STARTING_FRAMES_UNTIL_UPDATE = 4
+
+#rules of the game defined as a constant dict since they aren't many, where the keys are the sum of live neighbors and the values are the next state of the cell
+COUNT_CASES = {0: 0, 1: 0, 2: "stay", 3: 1, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0}
+
+
+#returns a new grid based on the old one's state and the game's rules
+def updateGrid(grid):
+    new_grid = [[0 for x in range(H)] for y in range(W)]
+    for i in range(W):
+        for j in range(H):
+            #need to manually loop index overflow, underflow is handled by python magic
+            count = grid[i-1][j] + grid[(i+1)%W][j] + grid[i][j-1] + grid[i][(j+1)%H] + grid[i-1][j-1] + grid[i-1][(j+1)%H] + grid[(i+1)%W][j-1] + grid[(i+1)%W][(j+1)%H]
+            #write the new cell state
+            if not (COUNT_CASES[count] == "stay"):
+                new_grid[i][j] = COUNT_CASES[count]
+            else:
+                new_grid[i][j] = grid[i][j]
+    return new_grid
+
+
+#main function for refreshing the screen and drawing the grid
+def drawGrid(grid, screen, light, dark):
+    screen.fill(light)
+
+    #these two draw the grid
+    for i in range(W):
+        pygame.draw.line(screen, dark, [i*(SQUARE_SIDE+1),0], [i*(SQUARE_SIDE+1),H*(SQUARE_SIDE+1)], 1)
+    pygame.draw.line(screen, dark, [W*(SQUARE_SIDE+1),0], [W*(SQUARE_SIDE+1),H*(SQUARE_SIDE+1)], 1)
+    for j in range(H):
+        pygame.draw.line(screen, dark, [0,j*(SQUARE_SIDE+1)], [W*(SQUARE_SIDE+1),j*(SQUARE_SIDE+1)], 1)
+    pygame.draw.line(screen, dark, [0, H*(SQUARE_SIDE+1)], [W*(SQUARE_SIDE+1),H*(SQUARE_SIDE+1)], 1)
+
+    #this fills in alive cells
+    for j in range(H):
+        for i in range(W):
+            if grid[i][j] == 1:
+                pygame.draw.rect(screen, dark, [i*(SQUARE_SIDE+1)+1+1, j*(SQUARE_SIDE+1)+1+1, SQUARE_SIDE-2, SQUARE_SIDE-2], 0)
+        
+    #updates the full display Surface to the screen
+    pygame.display.flip()
+
+
+#updates the window's caption based on current speed and pause state
+def updateCaption(screen, frames_until_update, unpaused):
+    if unpaused:
+        pygame.display.set_caption('Conway\'s Game of Life -- Speed: {:.4f}'.format(1/frames_until_update))
+    else:
+        pygame.display.set_caption('Conway\'s Game of Life -- Speed: {:.4f} -- PAUSED'.format(1/frames_until_update))
+
+
+#draws the splashscreen and waits for input before going on to the simulation
+def splashscreen():
+
+    light = (255, 255, 255)
+    dark = (0, 0, 0)
+    
+    #set up screen
+    size = (400, 500)
+    screen = pygame.display.set_mode(size)
+
+    screen.fill(light)
+
+    #set up fonts
+    myfont = pygame.font.SysFont("monospace", 15)
+    titlefont = pygame.font.SysFont("monospace", 25)
+
+    #draw text to screen
+    title = titlefont.render("Conway's Game of Life", 1, dark)
+    screen.blit(title, (200-title.get_width()/2, 50))
+    
+    label = myfont.render("Left click: turn cell on/off", 1, dark)
+    screen.blit(label, (200-label.get_width()/2, 150))
+    label = myfont.render("Space bar: pause/unpause simulation", 1, dark)
+    screen.blit(label, (200-label.get_width()/2, 150+(label.get_height()+10)*1))
+    label = myfont.render("Left arrow key: slow down simulation", 1, dark)
+    screen.blit(label, (200-label.get_width()/2, 150+(label.get_height()+10)*2))
+    label = myfont.render("Right arrow key: speed up simulation", 1, dark)
+    screen.blit(label, (200-label.get_width()/2, 150+(label.get_height()+10)*3))
+    label = myfont.render("C: clear board", 1, dark)
+    screen.blit(label, (200-label.get_width()/2, 150+(label.get_height()+10)*4))
+    label = myfont.render("1-5: change palette", 1, dark)
+    screen.blit(label, (200-label.get_width()/2, 150+(label.get_height()+10)*5))
+    label = myfont.render("Escape: exit the simulation", 1, dark)
+    screen.blit(label, (200-label.get_width()/2, 150+(label.get_height()+10)*6))
+    label = myfont.render("press any key to proceed to simulation", 1, dark)
+    screen.blit(label, (200-label.get_width()/2, 150+(label.get_height()+10)*8))
+    
+    #update screen
+    pygame.display.flip()
+
+    #wait for any input
+    done = False
+    while not done:
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
+                done = True
+
+
+#manages player input, paused state and screen update rate during the simulation
+def game():
+    done = False
+    clicked_position = [0, 0]
+    clicked = False
+    frames_passed = 0
+    unpaused = False
+
+    light = (255, 255, 255)
+    dark = (0, 0, 0)
+
+    size = (W*(SQUARE_SIDE+1)+1, H*(SQUARE_SIDE+1)+1)
+    screen = pygame.display.set_mode(size)
+    clock = pygame.time.Clock()
+    frames_until_update = STARTING_FRAMES_UNTIL_UPDATE
+    updateCaption(screen, frames_until_update, unpaused)
+
+    grid = [[0 for x in range(H)] for y in range(W)]
+
+    #handle multiple input
+    k1, k2, k3, k4, k5, leftPressed, rightPressed, spacePressed, cPressed = False, False, False, False, False, False, False, False, False
+
+    #main game loop
+    while not done:
+
+        #handles input
+        for event in pygame.event.get():
+            #window's exit button
+            if event.type == pygame.QUIT:
+                done = True
+            #key input
+            elif event.type == pygame.KEYDOWN:
+                pressed = pygame.key.get_pressed()
+                if pressed[pygame.K_ESCAPE]:
+                    done = True
+                if pressed[pygame.K_SPACE] and not spacePressed:
+                    unpaused = not unpaused
+                    updateCaption(screen, frames_until_update, unpaused)
+                    spacePressed = True
+                if pressed[pygame.K_c] and not cPressed:
+                    grid = [[0 for x in range(H)] for y in range(W)]
+                    cPressed = True
+                if pressed[pygame.K_LEFT] and not leftPressed:
+                    frames_until_update += 1
+                    updateCaption(screen, frames_until_update, unpaused)
+                    leftPressed = True
+                if pressed[pygame.K_RIGHT] and not rightPressed:
+                    if frames_until_update > 1:
+                        frames_until_update -= 1
+                        updateCaption(screen, frames_until_update, unpaused)
+                    rightPressed = True
+                if pressed[pygame.K_1] and not k1:
+                    light = (255, 255, 255)
+                    dark = (0, 0, 0)
+                    k1 = True
+                if pressed[pygame.K_2] and not k2:
+                    light = (227, 213, 184)
+                    dark = (208, 57, 88)
+                    k2 = True
+                if pressed[pygame.K_3] and not k3:
+                    light = (247, 176, 42)
+                    dark = (232, 113, 16)
+                    k3 = True
+                if pressed[pygame.K_4] and not k4:
+                    light = (255, 252, 151)
+                    dark = (146, 31, 58)
+                    k4 = True
+                if pressed[pygame.K_5] and not k5:
+                    light = (241, 234, 220)
+                    dark = (20, 147, 165)
+                    k5 = True
+            elif event.type == pygame.KEYUP:
+                pressed = pygame.key.get_pressed()
+                if not pressed[pygame.K_1] and k1:
+                    k1 = False
+                if not pressed[pygame.K_2] and k2:
+                    k2 = False
+                if not pressed[pygame.K_3] and k3:
+                    k3 = False
+                if not pressed[pygame.K_4] and k4:
+                    k4 = False
+                if not pressed[pygame.K_5] and k5:
+                    k5 = False
+                if not pressed[pygame.K_LEFT] and leftPressed:
+                    leftPressed = False
+                if not pressed[pygame.K_RIGHT] and rightPressed:
+                    rightPressed = False
+                if not pressed[pygame.K_SPACE] and spacePressed:
+                    spacePressed = False
+                if not pressed[pygame.K_c] and cPressed:
+                    cPressed = False
+                
+            #mouse input
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                clicked_position = pygame.mouse.get_pos()
+                grid[clicked_position[0]//(SQUARE_SIDE+1)][clicked_position[1]//(SQUARE_SIDE+1)] = not grid[clicked_position[0]//(SQUARE_SIDE+1)][clicked_position[1]//(SQUARE_SIDE+1)]
+                    
+        #calls update function based on update speed and pause state
+        if unpaused:
+            if frames_passed >= frames_until_update:
+                grid = updateGrid(grid)
+                frames_passed = 0
+            frames_passed += 1
+
+        #draws screen and passes enough time to keep up the framerate using pygame's clock
+        drawGrid(grid, screen, light, dark)
+        clock.tick(FRAMERATE)
+        
+
+
+#main function; initializes pygame, handles flow of screens and ultimately kills program
+def main():
+    #magic words to center the screens
+    os.environ['SDL_VIDEO_CENTERED'] = '1'
+    
+    pygame.init()
+
+    splashscreen()
+    
+    game()
+
+    pygame.quit()
+
+
+#no need to import this I guess
+if __name__ == "__main__":
+    main()
